@@ -24,7 +24,6 @@
 #include <fcitx-utils/inputbuffer.h>
 #include <fcitx-utils/key.h>
 #include <fcitx-utils/keysym.h>
-#include <fcitx-utils/keysymgen.h>
 #include <fcitx-utils/misc.h>
 #include <fcitx-utils/standardpath.h>
 #include <fcitx-utils/trackableobject.h>
@@ -293,7 +292,8 @@ FCITX_CONFIGURATION(
             this,
             "QuickPhraseTriggerRegex",
             _("Regular expression to trigger quick phrase"),
-            {".(\\.|/|@)$", "^(http|https|ftp|telnet|mailto):"},
+            {".(/|@)$", "^(www|bbs|forum|mail|bbs)\\.",
+             "^(http|https|ftp|telnet|mailto):"},
             {},
             {},
             {_("Enter quickphrase mode when current input matches any regular "
@@ -329,6 +329,7 @@ public:
 
     int keyReleased_ = -1;
     int keyReleasedIndex_ = -2;
+    uint64_t lastKeyPressedTime_ = 0;
 };
 
 class PinyinEngine final : public InputMethodEngineV3,

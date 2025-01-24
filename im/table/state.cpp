@@ -15,8 +15,10 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <fcitx-utils/capabilityflags.h>
 #include <fcitx-utils/event.h>
+#include <fcitx-utils/eventloopinterface.h>
 #include <fcitx-utils/i18n.h>
 #include <fcitx-utils/key.h>
 #include <fcitx-utils/keysym.h>
@@ -251,10 +253,7 @@ bool TableState::isComposeTableMode() const {
 bool TableState::autoSelectCandidate() const {
     auto candidateList = ic_->inputPanel().candidateList();
     if (candidateList && !candidateList->empty()) {
-        int idx = candidateList->cursorIndex();
-        if (idx < 0) {
-            idx = 0;
-        }
+        int idx = std::max(candidateList->cursorIndex(), 0);
         candidateList->candidate(idx).select(ic_);
         return true;
     }
@@ -1134,10 +1133,14 @@ bool TableState::handle2nd3rdCandidate(const TableConfig &config,
             if (keyReleased == idx &&
                 keyReleasedIndex == event.key().keyListIndex(keyHandler.list)) {
                 if (isModifier) {
-                    if (keyHandler.selection < candidateList->size()) {
+                    if (engine_->instance()
+                            ->globalConfig()
+                            .checkModifierOnlyKeyTimeout(lastKeyPressedTime_) &&
+                        keyHandler.selection < candidateList->size()) {
                         candidateList->candidate(keyHandler.selection)
                             .select(inputContext);
                     }
+                    lastKeyPressedTime_ = 0;
                     event.filterAndAccept();
                     return true;
                 }
@@ -1156,6 +1159,7 @@ bool TableState::handle2nd3rdCandidate(const TableConfig &config,
                 keyReleased_ = idx;
                 keyReleasedIndex_ = keyIdx;
                 if (isModifier) {
+                    lastKeyPressedTime_ = now(CLOCK_MONOTONIC);
                     // don't forward to input method, but make it pass
                     // through to client.
                     event.filter();
@@ -1302,9 +1306,7 @@ void TableState::updateUI(bool keepOldCursor, bool maybePredict) {
             }
         }
     }
-    if (cursor < 0) {
-        cursor = 0;
-    }
+    cursor = std::max(cursor, 0);
 
     ic_->inputPanel().reset();
 
